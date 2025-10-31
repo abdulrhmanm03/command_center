@@ -5,7 +5,7 @@ import { Header } from "@/components/header"
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
   AlertTriangle,
   ArrowLeft,
@@ -46,12 +46,13 @@ import { Input } from "@/components/ui/input"
 export default function IncidentDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const incidentId = params.id as string
 
   const [incident, setIncident] = useState<any>(null)
   const [liveData, setLiveData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview")
 
   const [newComment, setNewComment] = useState("")
   const [newTag, setNewTag] = useState("")
@@ -71,6 +72,13 @@ export default function IncidentDetailPage() {
     const interval = setInterval(fetchLiveData, 5000) // Update every 5s
     return () => clearInterval(interval)
   }, [incidentId])
+
+  useEffect(() => {
+    const tab = searchParams.get("tab")
+    if (tab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
 
   const fetchIncidentDetails = async () => {
     try {
@@ -264,7 +272,10 @@ export default function IncidentDetailPage() {
             {["overview", "timeline", "evidence", "response", "related", "triage"].map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                  setActiveTab(tab)
+                  router.push(`?tab=${tab}`, { scroll: false })
+                }}
                 className={cn(
                   "px-4 py-2 text-sm font-medium capitalize transition-colors",
                   activeTab === tab ? "text-cyan-400 border-b-2 border-cyan-400" : "text-gray-400 hover:text-white",
@@ -801,18 +812,152 @@ export default function IncidentDetailPage() {
 
           {activeTab === "triage" && (
             <div className="grid grid-cols-3 gap-6">
-              {/* Left Column - Investigation Tools */}
+              {/* Left Column - Investigation & Analysis */}
               <div className="col-span-2 space-y-6">
-                {/* Comments & Collaboration */}
+                {/* AI-Powered Triage Recommendations */}
+                <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-lg border border-cyan-500/30 p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-cyan-400" />
+                    AI-Powered Triage Recommendations
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-[#0f0f0f] rounded-lg border border-cyan-500/20">
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                          <AlertTriangle className="h-5 w-5 text-cyan-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-semibold text-white mb-1">Recommended Action</h4>
+                          <p className="text-sm text-gray-300">
+                            Escalate to Tier 2 - This incident shows characteristics of a coordinated brute force attack
+                            with 87% confidence
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400">Confidence:</span>
+                          <Badge className="bg-green-500/10 text-green-400 border-green-500/30">87%</Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400">Similar Incidents:</span>
+                          <span className="text-cyan-400 font-medium">12 resolved</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400">Avg Resolution Time:</span>
+                          <span className="text-white font-medium">2.5 hours</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 bg-[#0f0f0f] rounded-lg border border-border/20 text-center">
+                        <p className="text-xs text-gray-400 mb-1">True Positive Likelihood</p>
+                        <p className="text-2xl font-bold text-green-400">92%</p>
+                      </div>
+                      <div className="p-3 bg-[#0f0f0f] rounded-lg border border-border/20 text-center">
+                        <p className="text-xs text-gray-400 mb-1">Business Impact</p>
+                        <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/30">High</Badge>
+                      </div>
+                      <div className="p-3 bg-[#0f0f0f] rounded-lg border border-border/20 text-center">
+                        <p className="text-xs text-gray-400 mb-1">Urgency Score</p>
+                        <p className="text-2xl font-bold text-red-400">8.5/10</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Investigation Checklist */}
+                <div className="bg-[#0f0f0f] rounded-lg border border-border/30 p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-cyan-400" />
+                    Investigation Checklist
+                  </h3>
+                  <div className="space-y-3">
+                    {[
+                      { task: "Verify source IP reputation", status: "completed", time: "2 min ago" },
+                      { task: "Check affected user accounts", status: "completed", time: "5 min ago" },
+                      { task: "Review authentication logs", status: "in_progress", time: "In progress" },
+                      { task: "Analyze attack patterns", status: "pending", time: "Not started" },
+                      { task: "Assess data exposure risk", status: "pending", time: "Not started" },
+                      { task: "Document findings", status: "pending", time: "Not started" },
+                    ].map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg border border-border/20"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              "w-5 h-5 rounded flex items-center justify-center",
+                              item.status === "completed" && "bg-green-500/20",
+                              item.status === "in_progress" && "bg-yellow-500/20",
+                              item.status === "pending" && "bg-gray-500/20",
+                            )}
+                          >
+                            {item.status === "completed" && <CheckCircle2 className="h-4 w-4 text-green-400" />}
+                            {item.status === "in_progress" && <Clock className="h-4 w-4 text-yellow-400" />}
+                            {item.status === "pending" && <div className="w-3 h-3 border-2 border-gray-500 rounded" />}
+                          </div>
+                          <span className="text-sm text-white">{item.task}</span>
+                        </div>
+                        <span className="text-xs text-gray-400">{item.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Impact Assessment */}
+                <div className="bg-[#0f0f0f] rounded-lg border border-border/30 p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-cyan-400" />
+                    Impact Assessment
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-[#1a1a1a] rounded-lg border border-border/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="h-4 w-4 text-orange-400" />
+                        <span className="text-xs text-gray-400 uppercase tracking-wide">Affected Users</span>
+                      </div>
+                      <p className="text-2xl font-bold text-white">23</p>
+                      <p className="text-xs text-gray-400 mt-1">Admin accounts targeted</p>
+                    </div>
+                    <div className="p-4 bg-[#1a1a1a] rounded-lg border border-border/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Database className="h-4 w-4 text-blue-400" />
+                        <span className="text-xs text-gray-400 uppercase tracking-wide">Data Exposure</span>
+                      </div>
+                      <p className="text-2xl font-bold text-white">Low</p>
+                      <p className="text-xs text-gray-400 mt-1">No data breach detected</p>
+                    </div>
+                    <div className="p-4 bg-[#1a1a1a] rounded-lg border border-border/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="h-4 w-4 text-red-400" />
+                        <span className="text-xs text-gray-400 uppercase tracking-wide">Business Impact</span>
+                      </div>
+                      <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/30">High</Badge>
+                      <p className="text-xs text-gray-400 mt-1">Critical systems at risk</p>
+                    </div>
+                    <div className="p-4 bg-[#1a1a1a] rounded-lg border border-border/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="h-4 w-4 text-yellow-400" />
+                        <span className="text-xs text-gray-400 uppercase tracking-wide">Downtime Risk</span>
+                      </div>
+                      <p className="text-2xl font-bold text-white">Medium</p>
+                      <p className="text-xs text-gray-400 mt-1">Potential service disruption</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Analyst Notes & Collaboration */}
                 <div className="bg-[#0f0f0f] rounded-lg border border-border/30 p-6">
                   <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <MessageSquare className="h-5 w-5 text-cyan-400" />
-                    Comments & Collaboration
+                    Analyst Notes & Collaboration
                   </h3>
                   <div className="space-y-4">
                     <div className="flex gap-3">
                       <Textarea
-                        placeholder="Add a comment... Use @username to mention team members"
+                        placeholder="Add investigation notes... Use @username to mention team members"
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
                         className="flex-1 bg-[#1a1a1a] border-border/30 text-white resize-none"
@@ -839,7 +984,7 @@ export default function IncidentDetailPage() {
                       ))}
                       {comments.length === 0 && (
                         <p className="text-center text-gray-400 text-sm py-8">
-                          No comments yet. Start the conversation!
+                          No notes yet. Document your investigation findings!
                         </p>
                       )}
                     </div>
@@ -949,8 +1094,42 @@ export default function IncidentDetailPage() {
                 </div>
               </div>
 
-              {/* Right Column - Triage Actions */}
+              {/* Right Column - Quick Actions & Status */}
               <div className="space-y-6">
+                {/* Quick Facts Panel */}
+                <div className="bg-[#0f0f0f] rounded-lg border border-border/30 p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Eye className="h-5 w-5 text-cyan-400" />
+                    Quick Facts
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-2">
+                      <span className="text-sm text-gray-400">Time to Triage</span>
+                      <span className="text-sm font-medium text-white">12 min</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2">
+                      <span className="text-sm text-gray-400">SLA Remaining</span>
+                      <span className="text-sm font-medium text-green-400">3h 48m</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2">
+                      <span className="text-sm text-gray-400">Similar Incidents</span>
+                      <span className="text-sm font-medium text-cyan-400">12 found</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2">
+                      <span className="text-sm text-gray-400">Attack Vector</span>
+                      <Badge variant="outline" className="text-xs">
+                        Brute Force
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-2">
+                      <span className="text-sm text-gray-400">MITRE Tactic</span>
+                      <Badge variant="outline" className="text-xs">
+                        TA0006
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Triage Actions */}
                 <div className="bg-[#0f0f0f] rounded-lg border border-border/30 p-6">
                   <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">

@@ -605,7 +605,6 @@ export default function ModelRegistryView() {
     <div className="flex h-screen">
       {/* ✅ Sidebar */}
       <SidebarNav />
-
       {/* ✅ Main Content */}
       <div className="flex flex-1 flex-col overflow-y-auto hide-scrollbar text-white m-6">
         <div className="space-y-6">
@@ -1572,7 +1571,7 @@ export default function ModelRegistryView() {
 
           {/* Model Details Dialog */}
           <Dialog open={showModelDialog} onOpenChange={setShowModelDialog}>
-            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto hide-scrollbar">
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{selectedModel?.name}</DialogTitle>
                 <DialogDescription>

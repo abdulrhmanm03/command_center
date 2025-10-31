@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Shield,
@@ -23,6 +24,8 @@ interface DashboardViewProps {
 }
 
 export default function DashboardView({ onNavigate }: DashboardViewProps) {
+  const router = useRouter();
+
   const [stats, setStats] = useState([
     {
       title: "Requests Analyzed",
@@ -32,7 +35,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
       trend: "up" as const,
       gradient: "from-indigo-900/30 via-indigo-800/10",
       iconColor: "text-indigo-400",
-      navigateTo: "analytics",
+      navigateTo: "/sm-analytics",
     },
     {
       title: "Threats Blocked",
@@ -42,7 +45,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
       trend: "up" as const,
       gradient: "from-red-900/30 via-red-800/10",
       iconColor: "text-red-400",
-      navigateTo: "threats",
+      navigateTo: "/sm-threat-detection",
     },
     {
       title: "Active Incidents",
@@ -52,7 +55,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
       trend: "down" as const,
       gradient: "from-yellow-900/30 via-yellow-800/10",
       iconColor: "text-yellow-400",
-      navigateTo: "incidents",
+      navigateTo: "/sm-incidents",
     },
     {
       title: "Clean Requests",
@@ -63,7 +66,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
       gradient: "from-green-900/30 via-green-800/10",
       iconColor: "text-green-400",
       isPercentage: true,
-      navigateTo: "analytics",
+      navigateTo: "/sm-analytics",
     },
   ]);
 
@@ -100,103 +103,103 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
 
   const handleStatClick = (navigateTo: string) => {
     if (onNavigate) onNavigate(navigateTo);
+    else router.push(navigateTo);
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
-      {/* Sidebar */}
+    <div className="flex h-screen">
+      {/* ✅ Sidebar */}
       <SidebarNav />
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 lg:p-8 text-white">
-        {/* Header */}
-        <header className="mb-8">
-          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-blue-400 drop-shadow-md">
-            AI Pipeline Guardian
-          </h1>
-          <p className="text-gray-400">
-            Real-time AI pipeline protection and threat intelligence
-          </p>
-        </header>
-
-        {/* Stats Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            const TrendIcon = stat.trend === "up" ? TrendingUp : TrendingDown;
-            const trendColor =
-              stat.trend === "up" ? "text-green-500" : "text-red-500";
-
-            return (
-              <Card
-                key={stat.title}
-                onClick={() => handleStatClick(stat.navigateTo)}
-                className="relative border-none text-white overflow-hidden rounded-2xl bg-white/5 shadow-lg backdrop-blur-md hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] transition-all duration-300 cursor-pointer hover:scale-105"
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                <div
-                  className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} to-transparent pointer-events-none`}
-                />
-                <div className="relative z-10">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-400">
-                      {stat.title}
-                    </CardTitle>
-                    <Icon
-                      className={`h-8 w-8 ${stat.iconColor} drop-shadow-md`}
-                    />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl lg:text-3xl font-bold drop-shadow-lg">
-                      {formatValue(stat.value, stat.isPercentage)}
-                    </div>
-                    <div
-                      className={`text-xs ${trendColor} mt-1 flex items-center gap-1`}
-                    >
-                      <TrendIcon className="w-4 h-4" />
-                      {stat.change > 0 ? "+" : ""}
-                      {stat.change}% from last hour
-                    </div>
-                  </CardContent>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Live Threat Monitor */}
-        <Card className="relative border-none text-white overflow-hidden rounded-2xl bg-white/5 shadow-lg backdrop-blur-md mb-8">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/30 via-blue-800/10 to-transparent pointer-events-none" />
-          <div className="relative z-10 p-4">
-            <LiveThreatMonitor onNavigate={onNavigate} />
+      {/* ✅ Main Content */}
+      <div className="flex flex-1 flex-col overflow-y-auto hide-scrollbar text-white m-6">
+        <div className="space-y-8 p-6 lg:p-8 text-white">
+          <div className="space-y-1">
+            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-blue-400 drop-shadow-md">
+              AI Pipeline Guardian
+            </h1>
+            <p className="text-gray-400">
+              Real-time AI pipeline protection and threat intelligence
+            </p>
           </div>
-        </Card>
 
-        {/* Risk & Behavior Charts */}
-        <div className="grid gap-6 lg:grid-cols-2 mb-8">
-          <RiskHeatmap />
-          <BehavioralTrendChart />
-        </div>
+          {/* Stat Cards */}
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {stats.map((stat, index) => {
+              const Icon = stat.icon;
+              const TrendIcon = stat.trend === "up" ? TrendingUp : TrendingDown;
+              const trendColor =
+                stat.trend === "up" ? "text-green-500" : "text-red-500";
 
-        {/* Custom Widgets */}
-        <CustomizableWidgets />
+              return (
+                <Card
+                  key={stat.title}
+                  onClick={() => handleStatClick(stat.navigateTo)}
+                  className="relative border-none text-white overflow-hidden rounded-2xl bg-white/5 shadow-lg backdrop-blur-md hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] transition-all duration-300 cursor-pointer hover:scale-105"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} to-transparent pointer-events-none`}
+                  />
+                  <div className="relative z-10">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-400">
+                        {stat.title}
+                      </CardTitle>
+                      <Icon
+                        className={`h-8 w-8 ${stat.iconColor} drop-shadow-md`}
+                      />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl lg:text-3xl font-bold drop-shadow-lg">
+                        {formatValue(stat.value, stat.isPercentage)}
+                      </div>
+                      <div
+                        className={`text-xs ${trendColor} mt-1 flex items-center gap-1`}
+                      >
+                        <TrendIcon className="w-4 h-4" />
+                        {stat.change > 0 ? "+" : ""}
+                        {stat.change}% from last hour
+                      </div>
+                    </CardContent>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
 
-        {/* Status and Embedding Charts */}
-        <div className="grid gap-6 lg:grid-cols-2 mt-8">
+          {/* Threat Monitor */}
           <Card className="relative border-none text-white overflow-hidden rounded-2xl bg-white/5 shadow-lg backdrop-blur-md">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-indigo-800/10 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-900/30 via-blue-800/10 to-transparent pointer-events-none" />
             <div className="relative z-10 p-4">
-              <StatusChart />
+              <LiveThreatMonitor onNavigate={onNavigate} />
             </div>
           </Card>
-          <Card className="relative border-none text-white overflow-hidden rounded-2xl bg-white/5 shadow-lg backdrop-blur-md">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-900/30 via-green-800/10 to-transparent pointer-events-none" />
-            <div className="relative z-10 p-4">
-              <EmbeddingSpaceVisualizer />
-            </div>
-          </Card>
+
+          {/* Risk Analysis Section */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <RiskHeatmap />
+            <BehavioralTrendChart />
+          </div>
+
+          <CustomizableWidgets />
+
+          {/* Charts */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="relative border-none text-white overflow-hidden rounded-2xl bg-white/5 shadow-lg backdrop-blur-md">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-indigo-800/10 to-transparent pointer-events-none" />
+              <div className="relative z-10 p-4">
+                <StatusChart />
+              </div>
+            </Card>
+            <Card className="relative border-none text-white overflow-hidden rounded-2xl bg-white/5 shadow-lg backdrop-blur-md">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-900/30 via-green-800/10 to-transparent pointer-events-none" />
+              <div className="relative z-10 p-4">
+                <EmbeddingSpaceVisualizer />
+              </div>
+            </Card>
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -128,7 +128,7 @@ const semanticFirewall = [
   {
     title: "Dashboard",
     href: "/sm-dashboard",
-    icon: Database,
+    icon: LayoutDashboard,
   },
   {
     title: "Pipelines",
@@ -138,7 +138,7 @@ const semanticFirewall = [
   {
     title: "Model Registry",
     href: "/sm-model-registry",
-    icon: Search,
+    icon: Database,
   },
   {
     title: "Interaction Layer",
@@ -148,32 +148,37 @@ const semanticFirewall = [
   {
     title: "Behavioral Telemetry",
     href: "/sm-behavioral-telemetry",
-    icon: Store,
+    icon: Radar,
   },
   {
     title: "EXecution Environment",
     href: "/sm-execution-environment",
-    icon: Store,
+    icon: Network,
   },
   {
     title: "Threat Detection",
     href: "/sm-threat-detection",
-    icon: Store,
+    icon: AlertTriangle,
   },
   {
     title: "Policies",
     href: "/sm-policies",
-    icon: Store,
+    icon: CheckSquare,
   },
   {
     title: "Incidents",
     href: "/sm-incidents",
-    icon: Store,
+    icon: FileText,
   },
   {
     title: "Analytics",
     href: "/sm-analytics",
-    icon: Store,
+    icon: TrendingUp,
+  },
+  {
+    title: "Settings",
+    href: "/sm-settings",
+    icon: Settings,
   },
 ];
 
