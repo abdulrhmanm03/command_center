@@ -54,11 +54,6 @@ const intelligenceItems = [
     icon: Shield,
   },
   {
-    title: "Global Risk Radar",
-    href: "/risk-radar",
-    icon: Radar,
-  },
-  {
     title: "User Entity Behaviour Analytics",
     href: "/user-analytics",
     icon: BarChart3,
