@@ -5,13 +5,11 @@ import {
   LayoutDashboard,
   AlertTriangle,
   FileText,
-  Target,
   Shield,
   Settings,
   LogOut,
   BarChart3,
   Network,
-  Database,
   BookOpen,
   Layers,
   Brain,
@@ -20,6 +18,7 @@ import {
   CheckSquare,
   Radar,
   Search,
+  Database,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -46,31 +45,21 @@ const navItems = [
     href: "/incidents",
     icon: FileText,
   },
-  {
-    title: "Vulnerability Management",
-    href: "/vulnerability",
-    icon: Target,
-  },
-  {
-    title: "Authentication Activity",
-    href: "/auth-activity",
-    icon: Shield,
-  },
-  {
-    title: "Compliance & Frameworks",
-    href: "/compliance",
-    icon: CheckSquare,
-  },
 ];
 
 const intelligenceItems = [
   {
-    title: "Threat Intel",
+    title: "Threat Intelligence",
     href: "/threat-intel",
     icon: Shield,
   },
   {
-    title: "Risk Analytics",
+    title: "Global Risk Radar",
+    href: "/risk-radar",
+    icon: Radar,
+  },
+  {
+    title: "User Entity Behaviour Analytics",
     href: "/user-analytics",
     icon: BarChart3,
   },
@@ -89,23 +78,18 @@ const intelligenceItems = [
     href: "/network",
     icon: Network,
   },
-  {
-    title: "AI Security Posture",
-    href: "/ai-spm",
-    icon: Brain,
-  },
 ];
 
 const automationItems = [
   {
-    title: "Data Pipeline",
-    href: "/pipeline",
-    icon: Database,
-  },
-  {
     title: "Playbooks",
     href: "/playbooks",
     icon: Layers,
+  },
+  {
+    title: "Compliance Reports",
+    href: "/compliance-reports",
+    icon: CheckSquare,
   },
   {
     title: "Hunt Console",
@@ -123,7 +107,6 @@ const automationItems = [
     icon: Store,
   },
 ];
-
 const semanticFirewall = [
   {
     title: "Dashboard",
@@ -216,7 +199,7 @@ export function SidebarNav() {
       </Link>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto hide-scrollbar p-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -308,7 +291,6 @@ export function SidebarNav() {
             );
           })}
         </div>
-
         <div className="pt-4">
           <div className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-yellow-500">
             Semantic Firewall

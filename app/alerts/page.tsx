@@ -6,10 +6,43 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertsTable } from "@/components/alerts-table"
 import { useRealtimeData } from "@/hooks/use-realtime-data"
 import { Shield, Activity, AlertTriangle, CheckCircle, TrendingUp, Clock } from "lucide-react"
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts"
+import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts"
+import { useEffect, useState } from "react"
 
 export default function AlertsPage() {
   const { metrics } = useRealtimeData()
+
+  const [trendData, setTrendData] = useState([
+    { time: "10:00", critical: 12, high: 28, medium: 45, low: 18 },
+    { time: "10:30", critical: 15, high: 32, medium: 38, low: 22 },
+    { time: "11:00", critical: 18, high: 35, medium: 42, low: 19 },
+    { time: "11:30", critical: 14, high: 30, medium: 40, low: 25 },
+    { time: "12:00", critical: 20, high: 38, medium: 48, low: 20 },
+    { time: "12:30", critical: 16, high: 25, medium: 35, low: 15 },
+    { time: "13:00", critical: 10, high: 22, medium: 30, low: 12 },
+  ])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTrendData((prev) => {
+        const newData = [...prev.slice(1)]
+        const now = new Date()
+        const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`
+
+        newData.push({
+          time: timeStr,
+          critical: Math.floor(Math.random() * 15) + 8,
+          high: Math.floor(Math.random() * 20) + 20,
+          medium: Math.floor(Math.random() * 25) + 30,
+          low: Math.floor(Math.random() * 15) + 10,
+        })
+
+        return newData
+      })
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const totalAlerts = metrics?.totalAlerts || 1287
   const criticalAlerts = Math.floor(totalAlerts * 0.15)
@@ -18,20 +51,30 @@ export default function AlertsPage() {
   const lowAlerts = totalAlerts - criticalAlerts - highAlerts - mediumAlerts
 
   const severityData = [
-    { name: "Critical", value: criticalAlerts, color: "#dc2626" },
-    { name: "High", value: highAlerts, color: "#ea580c" },
-    { name: "Medium", value: mediumAlerts, color: "#f59e0b" },
-    { name: "Low", value: lowAlerts, color: "#84cc16" },
-  ]
-
-  const trendData = [
-    { day: "Mon", critical: 12, high: 28, medium: 45, low: 18 },
-    { day: "Tue", critical: 15, high: 32, medium: 38, low: 22 },
-    { day: "Wed", critical: 18, high: 35, medium: 42, low: 19 },
-    { day: "Thu", critical: 14, high: 30, medium: 40, low: 25 },
-    { day: "Fri", critical: 20, high: 38, medium: 48, low: 20 },
-    { day: "Sat", critical: 16, high: 25, medium: 35, low: 15 },
-    { day: "Sun", critical: 10, high: 22, medium: 30, low: 12 },
+    {
+      name: "Critical",
+      value: criticalAlerts,
+      color: "#dc2626",
+      percentage: ((criticalAlerts / totalAlerts) * 100).toFixed(1),
+    },
+    {
+      name: "High",
+      value: highAlerts,
+      color: "#ea580c",
+      percentage: ((highAlerts / totalAlerts) * 100).toFixed(1),
+    },
+    {
+      name: "Medium",
+      value: mediumAlerts,
+      color: "#f59e0b",
+      percentage: ((mediumAlerts / totalAlerts) * 100).toFixed(1),
+    },
+    {
+      name: "Low",
+      value: lowAlerts,
+      color: "#84cc16",
+      percentage: ((lowAlerts / totalAlerts) * 100).toFixed(1),
+    },
   ]
 
   const responseData = [
@@ -141,44 +184,52 @@ export default function AlertsPage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2 mb-6">
-            {/* Alert Severity Distribution */}
             <Card className="bg-[#1a1a1a] border-gray-800">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
                   <Shield className="h-5 w-5 text-cyan-400" />
                   Alert Severity Distribution
                 </CardTitle>
-                <p className="text-sm text-gray-400">Current alert breakdown by severity level</p>
+                <p className="text-sm text-gray-400">Live breakdown by severity level</p>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <ResponsiveContainer width="50%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={severityData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {severityData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="space-y-3">
-                    {severityData.map((item) => (
-                      <div key={item.name} className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                        <div className="flex-1">
-                          <div className="text-sm text-gray-300">{item.name}</div>
-                          <div className="text-xs text-gray-500">{item.value} alerts</div>
+                <div className="space-y-4">
+                  {severityData.map((item) => (
+                    <div key={item.name} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-4 h-4 rounded-full ring-2 ring-offset-2 ring-offset-[#1a1a1a]"
+                            style={{ backgroundColor: item.color, ringColor: item.color + "40" }}
+                          />
+                          <span className="text-sm font-medium text-gray-200">{item.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold text-gray-300">{item.value}</span>
+                          <span className="text-xs text-gray-500 w-12 text-right">{item.percentage}%</span>
                         </div>
                       </div>
-                    ))}
+                      <div className="h-3 bg-gray-900 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+                          style={{
+                            width: `${item.percentage}%`,
+                            backgroundColor: item.color,
+                          }}
+                        >
+                          <div
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"
+                            style={{ animationDuration: "2s" }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="pt-4 mt-4 border-t border-gray-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-400">Total Active Alerts</span>
+                      <span className="text-lg font-bold text-cyan-400">{totalAlerts}</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -225,30 +276,76 @@ export default function AlertsPage() {
             </Card>
           </div>
 
-          {/* Alert Trends */}
           <Card className="bg-[#1a1a1a] border-gray-800 mb-6">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-cyan-400" />
-                Alert Trends by Severity
-              </CardTitle>
-              <p className="text-sm text-gray-400">7-day alert volume and severity distribution</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-cyan-400" />
+                    Alert Trends by Severity
+                  </CardTitle>
+                  <p className="text-sm text-gray-400 mt-1">Real-time alert volume over the last 3.5 hours</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  <span className="text-xs text-gray-400">Live Data</span>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={trendData}>
-                  <XAxis dataKey="day" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={trendData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="time" stroke="#9ca3af" style={{ fontSize: "12px" }} />
+                  <YAxis stroke="#9ca3af" style={{ fontSize: "12px" }} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #374151" }}
-                    labelStyle={{ color: "#fff" }}
+                    contentStyle={{
+                      backgroundColor: "#1a1a1a",
+                      border: "1px solid #374151",
+                      borderRadius: "8px",
+                      padding: "12px",
+                    }}
+                    labelStyle={{ color: "#fff", fontWeight: "bold", marginBottom: "8px" }}
+                    itemStyle={{ color: "#d1d5db", fontSize: "13px" }}
                   />
-                  <Legend />
-                  <Bar dataKey="critical" stackId="a" fill="#dc2626" name="Critical" />
-                  <Bar dataKey="high" stackId="a" fill="#ea580c" name="High" />
-                  <Bar dataKey="medium" stackId="a" fill="#f59e0b" name="Medium" />
-                  <Bar dataKey="low" stackId="a" fill="#84cc16" name="Low" />
-                </BarChart>
+                  <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="line" />
+                  <Line
+                    type="monotone"
+                    dataKey="critical"
+                    stroke="#dc2626"
+                    strokeWidth={2.5}
+                    dot={{ fill: "#dc2626", r: 4 }}
+                    activeDot={{ r: 6 }}
+                    name="Critical"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="high"
+                    stroke="#ea580c"
+                    strokeWidth={2.5}
+                    dot={{ fill: "#ea580c", r: 4 }}
+                    activeDot={{ r: 6 }}
+                    name="High"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="medium"
+                    stroke="#f59e0b"
+                    strokeWidth={2.5}
+                    dot={{ fill: "#f59e0b", r: 4 }}
+                    activeDot={{ r: 6 }}
+                    name="Medium"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="low"
+                    stroke="#84cc16"
+                    strokeWidth={2.5}
+                    dot={{ fill: "#84cc16", r: 4 }}
+                    activeDot={{ r: 6 }}
+                    name="Low"
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>

@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { SidebarNav } from "@/components/sidebar-nav"
 import { Header } from "@/components/header"
 import { useState, useEffect } from "react"
@@ -8,33 +10,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import {
-  Search,
   ChevronDown,
   AlertTriangle,
-  RefreshCw,
   ChevronRight,
   X,
   CheckCircle2,
   Clock,
   User,
   Shield,
-  Zap,
-  Target,
-  TrendingUp,
   Brain,
-  Keyboard,
-  ArrowRight,
-  Play,
-  Pause,
-  Layers,
-  Database,
-  Mail,
-  Network,
-  Server,
-  Cloud,
-  FileText,
-  Activity,
-  GitBranch,
   AlertCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -65,6 +49,18 @@ export default function IncidentsPage() {
   const [autoAdvance, setAutoAdvance] = useState(false)
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
 
+  const [reassignDialog, setReassignDialog] = useState<{
+    incidentId: string
+    currentOwner: string
+  } | null>(null)
+
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    incidentId: string
+    currentOwner: string
+  } | null>(null)
+
   const [filters, setFilters] = useState({
     urgency: "all",
     status: "all",
@@ -74,63 +70,28 @@ export default function IncidentsPage() {
     timeRange: "last_24hrs",
   })
 
-  useEffect(() => {
-    fetchIncidents()
-    const interval = setInterval(fetchIncidents, 10000)
-    return () => clearInterval(interval)
-  }, [])
+  const handleOwnerContextMenu = (e: React.MouseEvent, incidentId: string, currentOwner: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      incidentId,
+      currentOwner,
+    })
+  }
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null)
+  }
 
   useEffect(() => {
-    applyFilters()
-  }, [incidents, filters, searchQuery, sortConfig])
-
-  useEffect(() => {
-    if (!triageMode) return
-
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key) {
-          case "1":
-            e.preventDefault()
-            handleQuickTriageAction("critical")
-            break
-          case "2":
-            e.preventDefault()
-            handleQuickTriageAction("escalate")
-            break
-          case "3":
-            e.preventDefault()
-            handleQuickTriageAction("resolve")
-            break
-          case "n":
-            e.preventDefault()
-            handleNextIncident()
-            break
-          case "?":
-            e.preventDefault()
-            setShowKeyboardShortcuts(!showKeyboardShortcuts)
-            break
-        }
-      }
+    const handleClick = () => setContextMenu(null)
+    if (contextMenu) {
+      document.addEventListener("click", handleClick)
+      return () => document.removeEventListener("click", handleClick)
     }
-
-    window.addEventListener("keydown", handleKeyPress)
-    return () => window.removeEventListener("keydown", handleKeyPress)
-  }, [triageMode, selectedForTriage, showKeyboardShortcuts])
-
-  useEffect(() => {
-    if (triageMode && triageQueue.length === 0) {
-      const untriaged = filteredIncidents.filter((i) => i.status === "new" || i.status === "unassigned")
-      setTriageQueue(untriaged)
-      setTriageProgress({ completed: 0, total: untriaged.length })
-      if (untriaged.length > 0) {
-        setSelectedForTriage(untriaged[0])
-      }
-    } else if (!triageMode) {
-      setTriageQueue([])
-      setSelectedForTriage(null)
-    }
-  }, [triageMode, filteredIncidents, setTriageQueue, setTriageProgress, setSelectedForTriage])
+  }, [contextMenu])
 
   const fetchIncidents = async () => {
     try {
@@ -144,6 +105,10 @@ export default function IncidentsPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchIncidents()
+  }, [])
 
   const applyFilters = () => {
     let filtered = [...incidents]
@@ -185,6 +150,10 @@ export default function IncidentsPage() {
 
     setFilteredIncidents(filtered)
   }
+
+  useEffect(() => {
+    applyFilters()
+  }, [incidents, filters, searchQuery, sortConfig])
 
   const handleQuickTriageAction = async (action: string) => {
     if (!selectedForTriage) return
@@ -338,883 +307,424 @@ export default function IncidentsPage() {
     }
   }
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "new":
+      case "unassigned":
+        return {
+          icon: <AlertCircle className="h-3 w-3" />,
+          className: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+          label: "New",
+        }
+      case "in_progress":
+        return {
+          icon: <Clock className="h-3 w-3" />,
+          className: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+          label: "In Progress",
+        }
+      case "pending":
+        return {
+          icon: <Clock className="h-3 w-3" />,
+          className: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+          label: "Pending",
+        }
+      case "resolved":
+        return {
+          icon: <CheckCircle2 className="h-3 w-3" />,
+          className: "bg-green-500/20 text-green-400 border-green-500/30",
+          label: "Resolved",
+        }
+      case "closed":
+        return {
+          icon: <CheckCircle2 className="h-3 w-3" />,
+          className: "bg-gray-500/20 text-gray-400 border-gray-500/30",
+          label: "Closed",
+        }
+      default:
+        return {
+          icon: <AlertCircle className="h-3 w-3" />,
+          className: "bg-gray-500/20 text-gray-400 border-gray-500/30",
+          label: status,
+        }
+    }
+  }
+
   const totalPages = Math.ceil(filteredIncidents.length / itemsPerPage)
   const paginatedIncidents = filteredIncidents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const urgencyData = distributions
-    ? [
-        { name: "Critical", value: distributions.urgency.critical, color: "#ef4444" },
-        { name: "High", value: distributions.urgency.high, color: "#f97316" },
-        { name: "Medium", value: distributions.urgency.medium, color: "#eab308" },
-        { name: "Low", value: distributions.urgency.low, color: "#3b82f6" },
-        { name: "Info", value: distributions.urgency.info, color: "#6b7280" },
-      ]
-    : []
+  const urgencyData =
+    distributions && distributions.urgency
+      ? Object.entries(distributions.urgency).map(([key, value]) => ({
+          name: key.charAt(0).toUpperCase() + key.slice(1),
+          value: value as number,
+          color:
+            key === "critical"
+              ? "#ef4444"
+              : key === "high"
+                ? "#f97316"
+                : key === "medium"
+                  ? "#eab308"
+                  : key === "low"
+                    ? "#3b82f6"
+                    : "#6b7280",
+        }))
+      : []
 
-  const typeData = distributions
-    ? [
-        { name: "Risk Based Alert", value: distributions.type.risk_notable, color: "#06b6d4" },
-        { name: "Notable", value: distributions.type.notable, color: "#8b5cf6" },
-      ]
-    : []
+  const typeData =
+    distributions && distributions.type
+      ? [
+          { name: "Risk Based Alert", value: distributions.type.risk_notable || 0, color: "#06b6d4" },
+          { name: "Notable", value: distributions.type.notable || 0, color: "#8b5cf6" },
+        ]
+      : []
 
-  const statusData = distributions
-    ? [
-        { name: "Unassigned", value: distributions.status.unassigned, color: "#6b7280" },
-        { name: "New", value: distributions.status.new, color: "#3b82f6" },
-        { name: "In Progress", value: distributions.status.in_progress, color: "#eab308" },
-        { name: "Pending", value: distributions.status.pending, color: "#f97316" },
-        { name: "Resolved", value: distributions.status.resolved, color: "#10b981" },
-        { name: "Closed", value: distributions.status.closed, color: "#6b7280" },
-      ]
-    : []
+  const statusData =
+    distributions && distributions.status
+      ? [
+          { name: "Unassigned", value: distributions.status.unassigned || 0, color: "#6b7280" },
+          { name: "New", value: distributions.status.new || 0, color: "#3b82f6" },
+          { name: "In Progress", value: distributions.status.in_progress || 0, color: "#eab308" },
+          { name: "Pending", value: distributions.status.pending || 0, color: "#f97316" },
+          { name: "Resolved", value: distributions.status.resolved || 0, color: "#10b981" },
+          { name: "Closed", value: distributions.status.closed || 0, color: "#6b7280" },
+        ]
+      : []
 
-  const ownerData = distributions
-    ? [
-        { name: "Carl", value: distributions.owner.carl, color: "#06b6d4" },
-        { name: "Vishal", value: distributions.owner.vishal, color: "#8b5cf6" },
-        { name: "Terry", value: distributions.owner.terry, color: "#10b981" },
-        { name: "Jamie", value: distributions.owner.jamie, color: "#f59e0b" },
-        { name: "Lin", value: distributions.owner.lin, color: "#ec4899" },
-      ]
-    : []
+  const ownerData =
+    distributions && distributions.owner
+      ? Object.entries(distributions.owner).map(([key, value]) => ({
+          name: key,
+          value: value as number,
+          color:
+            key === "Carl"
+              ? "#06b6d4"
+              : key === "Vishal"
+                ? "#8b5cf6"
+                : key === "Terry"
+                  ? "#3b82f6"
+                  : key === "Jamie"
+                    ? "#f97316"
+                    : "#ec4899",
+        }))
+      : []
 
-  const domainData = distributions
-    ? [
-        { name: "Access", value: distributions.securityDomain.access, color: "#3b82f6" },
-        { name: "Endpoint", value: distributions.securityDomain.endpoint, color: "#8b5cf6" },
-        { name: "Network", value: distributions.securityDomain.network, color: "#06b6d4" },
-        { name: "Threat", value: distributions.securityDomain.threat, color: "#ef4444" },
-        { name: "Identity", value: distributions.securityDomain.identity, color: "#10b981" },
-        { name: "Audit", value: distributions.securityDomain.audit, color: "#f59e0b" },
-      ]
-    : []
+  const domainData =
+    distributions && distributions.domain
+      ? Object.entries(distributions.domain).map(([key, value]) => ({
+          name: key.charAt(0).toUpperCase() + key.slice(1),
+          value: value as number,
+          color:
+            key === "access"
+              ? "#8b5cf6"
+              : key === "endpoint"
+                ? "#3b82f6"
+                : key === "network"
+                  ? "#06b6d4"
+                  : key === "threat"
+                    ? "#ef4444"
+                    : key === "identity"
+                      ? "#10b981"
+                      : key === "audit"
+                        ? "#f97316"
+                        : "#6b7280",
+        }))
+      : []
 
-  if (triageMode) {
-    return (
-      <div className="flex h-screen">
-        <SidebarNav />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-hidden bg-gradient-to-br from-[#0a0a0a] via-[#0f1419] to-[#0a0a0a] relative">
-            {/* Animated background effect */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.1),transparent_50%)] animate-pulse" />
+  // Calculate totals for center labels
+  const urgencyTotal = urgencyData.reduce((sum, item) => sum + item.value, 0)
+  const typeTotal = typeData.reduce((sum, item) => sum + item.value, 0)
+  const statusTotal = statusData.reduce((sum, item) => sum + item.value, 0)
+  const ownerTotal = ownerData.reduce((sum, item) => sum + item.value, 0)
+  const domainTotal = domainData.reduce((sum, item) => sum + item.value, 0)
 
-            {/* Header */}
-            <div className="relative z-10 border-b border-cyan-500/30 bg-[#0a0a0a]/80 backdrop-blur-xl">
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse shadow-lg shadow-cyan-500/50" />
-                    <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
-                      ANALYST MODE
-                    </h1>
-                  </div>
-                  <div className="h-6 w-px bg-cyan-500/30" />
-                  <div className="flex items-center gap-2 text-sm">
-                    <TrendingUp className="h-4 w-4 text-cyan-400" />
-                    <span className="text-gray-400">
-                      Progress: <span className="text-cyan-400 font-semibold">{triageProgress.completed}</span> /{" "}
-                      {triageProgress.total}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowKeyboardShortcuts(!showKeyboardShortcuts)}
-                    className="gap-2 bg-transparent border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
-                  >
-                    <Keyboard className="h-4 w-4" />
-                    Shortcuts
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAutoAdvance(!autoAdvance)}
-                    className={cn(
-                      "gap-2 bg-transparent border-cyan-500/30",
-                      autoAdvance ? "text-cyan-400 bg-cyan-500/10" : "text-gray-400",
-                    )}
-                  >
-                    {autoAdvance ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                    Auto-Advance
-                  </Button>
-                  <Button
-                    onClick={() => setTriageMode(false)}
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 bg-transparent border-red-500/30 text-red-400 hover:bg-red-500/10"
-                  >
-                    <X className="h-4 w-4" />
-                    Exit Analyst Mode
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Main Content - Split View */}
-            <div className="relative z-10 flex h-[calc(100vh-140px)]">
-              {/* Left: Incident Queue (30%) */}
-              <div className="w-[30%] border-r border-cyan-500/30 bg-[#0a0a0a]/50 backdrop-blur-sm overflow-y-auto">
-                <div className="p-4 border-b border-cyan-500/20 bg-[#0f0f0f]/50">
-                  <h3 className="text-sm font-semibold text-cyan-400 mb-3 flex items-center gap-2">
-                    <Target className="h-4 w-4" />
-                    TRIAGE QUEUE ({triageQueue.length})
-                  </h3>
-                  <Input
-                    placeholder="Filter queue..."
-                    className="bg-[#1a1a1a] border-cyan-500/30 text-sm"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <div className="divide-y divide-cyan-500/10">
-                  {triageQueue.map((incident, idx) => {
-                    const isSelected = selectedForTriage?.id === incident.id
-                    const sla = getSLAStatus(incident.time, incident.urgency)
-
-                    return (
-                      <div
-                        key={incident.id}
-                        onClick={() => setSelectedForTriage(incident)}
-                        className={cn(
-                          "p-4 cursor-pointer transition-all duration-200",
-                          isSelected
-                            ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/10 border-l-4 border-cyan-400 shadow-lg shadow-cyan-500/20"
-                            : "hover:bg-[#1a1a1a]/50",
-                        )}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono text-gray-500">#{idx + 1}</span>
-                            <AlertTriangle className={cn("h-4 w-4", getSeverityColor(incident.urgency))} />
-                          </div>
-                          <span className={cn("text-xs font-medium", sla.color)}>{sla.text}</span>
-                        </div>
-                        <h4 className="text-sm font-medium text-white mb-1 line-clamp-2">{incident.title}</h4>
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {incident.urgency}
-                          </Badge>
-                          <span>•</span>
-                          <span>{incident.securityDomain}</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Right: Triage Workspace (70%) */}
-              <div className="flex-1 overflow-y-auto">
-                {selectedForTriage ? (
-                  <div className="p-6 space-y-6">
-                    {/* Incident Header */}
-                    <div className="bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] rounded-lg border border-cyan-500/30 p-6 shadow-xl shadow-cyan-500/10">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <AlertTriangle className={cn("h-6 w-6", getSeverityColor(selectedForTriage.urgency))} />
-                            <h2 className="text-2xl font-bold text-white">{selectedForTriage.title}</h2>
-                          </div>
-                          <p className="text-gray-400 text-sm">{selectedForTriage.riskObjectName}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handlePreviousIncident}
-                            disabled={triageQueue.findIndex((i) => i.id === selectedForTriage.id) === 0}
-                            className="bg-transparent border-cyan-500/30"
-                          >
-                            Previous
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleNextIncident}
-                            disabled={
-                              triageQueue.findIndex((i) => i.id === selectedForTriage.id) === triageQueue.length - 1
-                            }
-                            className="bg-transparent border-cyan-500/30"
-                          >
-                            Next
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-4 gap-4">
-                        <div className="bg-[#0a0a0a]/50 rounded-lg p-3 border border-cyan-500/20">
-                          <div className="text-xs text-gray-400 mb-1">Severity</div>
-                          <div
-                            className={cn("text-lg font-bold capitalize", getSeverityColor(selectedForTriage.urgency))}
-                          >
-                            {selectedForTriage.urgency}
-                          </div>
-                        </div>
-                        <div className="bg-[#0a0a0a]/50 rounded-lg p-3 border border-cyan-500/20">
-                          <div className="text-xs text-gray-400 mb-1">Risk Score</div>
-                          <div className="text-lg font-bold text-white">
-                            {selectedForTriage.aggregatedRiskScore || "N/A"}
-                          </div>
-                        </div>
-                        <div className="bg-[#0a0a0a]/50 rounded-lg p-3 border border-cyan-500/20">
-                          <div className="text-xs text-gray-400 mb-1">Domain</div>
-                          <div className="text-lg font-bold text-white capitalize">
-                            {selectedForTriage.securityDomain}
-                          </div>
-                        </div>
-                        <div className="bg-[#0a0a0a]/50 rounded-lg p-3 border border-cyan-500/20">
-                          <div className="text-xs text-gray-400 mb-1">Age</div>
-                          <div className="text-lg font-bold text-white">{getIncidentAge(selectedForTriage.time)}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Alert Sources & Detection */}
-                    <div className="bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] rounded-lg border border-cyan-500/30 p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <Layers className="h-5 w-5 text-cyan-400" />
-                        Alert Sources & Detection
-                      </h3>
-                      <div className="grid grid-cols-4 gap-3">
-                        <div className="bg-[#0a0a0a]/50 rounded-lg p-3 border border-green-500/30 flex items-center gap-3">
-                          <Shield className="h-5 w-5 text-green-400" />
-                          <div>
-                            <div className="text-xs text-gray-400">SIEM</div>
-                            <div className="text-sm font-semibold text-green-400">Active</div>
-                          </div>
-                        </div>
-                        <div className="bg-[#0a0a0a]/50 rounded-lg p-3 border border-green-500/30 flex items-center gap-3">
-                          <Server className="h-5 w-5 text-green-400" />
-                          <div>
-                            <div className="text-xs text-gray-400">XDR</div>
-                            <div className="text-sm font-semibold text-green-400">Detected</div>
-                          </div>
-                        </div>
-                        <div className="bg-[#0a0a0a]/50 rounded-lg p-3 border border-gray-500/30 flex items-center gap-3">
-                          <Network className="h-5 w-5 text-gray-400" />
-                          <div>
-                            <div className="text-xs text-gray-400">IDS/IPS</div>
-                            <div className="text-sm font-semibold text-gray-400">Inactive</div>
-                          </div>
-                        </div>
-                        <div className="bg-[#0a0a0a]/50 rounded-lg p-3 border border-green-500/30 flex items-center gap-3">
-                          <Mail className="h-5 w-5 text-green-400" />
-                          <div>
-                            <div className="text-xs text-gray-400">Email Sec</div>
-                            <div className="text-sm font-semibold text-green-400">Correlated</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Exabot Triage AI Analysis */}
-                    <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-500/30 p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <Brain className="h-5 w-5 text-purple-400 animate-pulse" />
-                        Exabot Triage Analysis
-                      </h3>
-
-                      {/* False Positive Detection */}
-                      <div className="mb-4 p-4 bg-green-900/20 rounded-lg border border-green-500/30">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-5 w-5 text-green-400" />
-                            <span className="text-sm font-semibold text-white">False Positive Detection</span>
-                          </div>
-                          <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Confidence: 12%</Badge>
-                        </div>
-                        <p className="text-xs text-gray-400">
-                          Low probability of false positive. Alert shows genuine threat indicators with high confidence.
-                        </p>
-                      </div>
-
-                      {/* AI Recommendations */}
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3 p-3 bg-[#0a0a0a]/50 rounded-lg border border-yellow-500/20">
-                          <Zap className="h-5 w-5 text-yellow-400 mt-0.5" />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-white">Escalate to Tier 2</span>
-                              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-                                Confidence: 87%
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-gray-400">
-                              Similar incidents required advanced analysis. Recommend escalation based on complexity
-                              patterns.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3 p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20">
-                          <CheckCircle2 className="h-5 w-5 text-green-400 mt-0.5" />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-white">Assign to Network Team</span>
-                              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                                Confidence: 92%
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-gray-400">
-                              Network domain expertise required. Team has 95% resolution rate for similar incidents.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Feedback Loop Indicator */}
-                      <div className="mt-4 p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20 flex items-center gap-3">
-                        <Activity className="h-5 w-5 text-cyan-400 animate-pulse" />
-                        <div className="flex-1">
-                          <div className="text-xs text-gray-400 mb-1">Feedback Loop Active</div>
-                          <div className="text-sm text-white">Learning from 247 similar historical incidents</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Full Contextualization Panel */}
-                    <div className="bg-[#0f0f0f] rounded-lg border border-cyan-500/30 p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <Database className="h-5 w-5 text-cyan-400" />
-                        Full Contextualization
-                      </h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-3">
-                          <div className="p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20">
-                            <div className="text-xs text-gray-400 mb-1">Threat Intelligence</div>
-                            <div className="text-sm text-white">Known APT28 tactics detected</div>
-                            <div className="text-xs text-cyan-400 mt-1">Source: MISP, AlienVault OTX</div>
-                          </div>
-                          <div className="p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20">
-                            <div className="text-xs text-gray-400 mb-1">User Context</div>
-                            <div className="text-sm text-white">High-privilege account</div>
-                            <div className="text-xs text-cyan-400 mt-1">Finance Department, VPN access</div>
-                          </div>
-                          <div className="p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20">
-                            <div className="text-xs text-gray-400 mb-1">Asset Context</div>
-                            <div className="text-sm text-white">Critical server - Production DB</div>
-                            <div className="text-xs text-cyan-400 mt-1">PCI-DSS scope, 24/7 monitoring</div>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20">
-                            <div className="text-xs text-gray-400 mb-1">Historical Behavior</div>
-                            <div className="text-sm text-white">Anomalous login pattern</div>
-                            <div className="text-xs text-cyan-400 mt-1">First login from this location</div>
-                          </div>
-                          <div className="p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20">
-                            <div className="text-xs text-gray-400 mb-1">Related Incidents</div>
-                            <div className="text-sm text-white">3 similar alerts this week</div>
-                            <div className="text-xs text-cyan-400 mt-1">2 resolved, 1 escalated</div>
-                          </div>
-                          <div className="p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20">
-                            <div className="text-xs text-gray-400 mb-1">Business Impact</div>
-                            <div className="text-sm text-white">High - Revenue system</div>
-                            <div className="text-xs text-cyan-400 mt-1">$50K/hour downtime cost</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Dynamic Workflows & Playbooks */}
-                    <div className="bg-[#0f0f0f] rounded-lg border border-cyan-500/30 p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <GitBranch className="h-5 w-5 text-cyan-400" />
-                        Dynamic Workflows & SOAR Playbooks
-                      </h3>
-
-                      {/* Recommended Workflow */}
-                      <div className="mb-4 p-4 bg-purple-900/20 rounded-lg border border-purple-500/30">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <Zap className="h-5 w-5 text-purple-400" />
-                            <span className="text-sm font-semibold text-white">Recommended Workflow</span>
-                          </div>
-                          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">Auto-selected</Badge>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-xs text-gray-300">
-                            <div className="w-6 h-6 rounded-full bg-green-500/20 border border-green-500 flex items-center justify-center text-green-400">
-                              1
-                            </div>
-                            <span>Isolate affected endpoint</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-300">
-                            <div className="w-6 h-6 rounded-full bg-yellow-500/20 border border-yellow-500 flex items-center justify-center text-yellow-400">
-                              2
-                            </div>
-                            <span>Collect forensic artifacts</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-300">
-                            <div className="w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500 flex items-center justify-center text-blue-400">
-                              3
-                            </div>
-                            <span>Block malicious IPs at firewall</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-300">
-                            <div className="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500 flex items-center justify-center text-purple-400">
-                              4
-                            </div>
-                            <span>Notify security team & stakeholders</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Available Playbooks */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button
-                          variant="outline"
-                          className="h-auto p-4 flex flex-col items-start gap-2 bg-[#0a0a0a]/50 border-cyan-500/30 hover:bg-cyan-500/10"
-                        >
-                          <div className="flex items-center gap-2 w-full">
-                            <Shield className="h-4 w-4 text-cyan-400" />
-                            <span className="text-sm font-semibold text-white">Ransomware Response</span>
-                          </div>
-                          <span className="text-xs text-gray-400">8 steps • 15 min avg</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-auto p-4 flex flex-col items-start gap-2 bg-[#0a0a0a]/50 border-cyan-500/30 hover:bg-cyan-500/10"
-                        >
-                          <div className="flex items-center gap-2 w-full">
-                            <AlertCircle className="h-4 w-4 text-orange-400" />
-                            <span className="text-sm font-semibold text-white">Phishing Investigation</span>
-                          </div>
-                          <span className="text-xs text-gray-400">6 steps • 10 min avg</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-auto p-4 flex flex-col items-start gap-2 bg-[#0a0a0a]/50 border-cyan-500/30 hover:bg-cyan-500/10"
-                        >
-                          <div className="flex items-center gap-2 w-full">
-                            <Network className="h-4 w-4 text-green-400" />
-                            <span className="text-sm font-semibold text-white">Network Intrusion</span>
-                          </div>
-                          <span className="text-xs text-gray-400">10 steps • 20 min avg</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-auto p-4 flex flex-col items-start gap-2 bg-[#0a0a0a]/50 border-cyan-500/30 hover:bg-cyan-500/10"
-                        >
-                          <div className="flex items-center gap-2 w-full">
-                            <Database className="h-4 w-4 text-purple-400" />
-                            <span className="text-sm font-semibold text-white">Data Exfiltration</span>
-                          </div>
-                          <span className="text-xs text-gray-400">12 steps • 25 min avg</span>
-                        </Button>
-                      </div>
-
-                      <Button className="w-full mt-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white">
-                        <Play className="mr-2 h-4 w-4" />
-                        Execute Recommended Workflow
-                      </Button>
-                    </div>
-
-                    {/* Logs & Evidence */}
-                    <div className="bg-[#0f0f0f] rounded-lg border border-cyan-500/30 p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-cyan-400" />
-                        Logs & Evidence
-                      </h3>
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
-                        <div className="p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20 font-mono text-xs">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Cloud className="h-3 w-3 text-blue-400" />
-                            <span className="text-gray-400">Cloud Logs</span>
-                            <span className="text-cyan-400">AWS CloudTrail</span>
-                          </div>
-                          <div className="text-gray-300">
-                            2024-01-15 14:32:15 | AssumeRole | user@company.com | 192.168.1.100
-                          </div>
-                        </div>
-                        <div className="p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20 font-mono text-xs">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Server className="h-3 w-3 text-green-400" />
-                            <span className="text-gray-400">Endpoint Logs</span>
-                            <span className="text-cyan-400">Windows Event</span>
-                          </div>
-                          <div className="text-gray-300">
-                            2024-01-15 14:32:18 | Process Created | powershell.exe | SYSTEM
-                          </div>
-                        </div>
-                        <div className="p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20 font-mono text-xs">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Network className="h-3 w-3 text-purple-400" />
-                            <span className="text-gray-400">Network Logs</span>
-                            <span className="text-cyan-400">Firewall</span>
-                          </div>
-                          <div className="text-gray-300">
-                            2024-01-15 14:32:20 | Connection | 192.168.1.100 → 185.220.101.5:443
-                          </div>
-                        </div>
-                        <div className="p-3 bg-[#0a0a0a]/50 rounded-lg border border-cyan-500/20 font-mono text-xs">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Mail className="h-3 w-3 text-orange-400" />
-                            <span className="text-gray-400">Email Logs</span>
-                            <span className="text-cyan-400">O365</span>
-                          </div>
-                          <div className="text-gray-300">
-                            2024-01-15 14:30:05 | Email Received | suspicious@external.com
-                          </div>
-                        </div>
-                      </div>
-                      <Button variant="outline" className="w-full mt-4 bg-transparent border-cyan-500/30">
-                        <FileText className="mr-2 h-4 w-4" />
-                        View Full Log Timeline
-                      </Button>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="bg-[#0f0f0f] rounded-lg border border-cyan-500/30 p-6">
-                      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <Zap className="h-5 w-5 text-cyan-400" />
-                        Quick Triage Actions
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button
-                          onClick={() => handleQuickTriageAction("critical")}
-                          className="h-16 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg shadow-red-500/20"
-                        >
-                          <div className="flex flex-col items-center gap-1">
-                            <AlertTriangle className="h-5 w-5" />
-                            <span className="text-sm font-semibold">Mark Critical</span>
-                            <span className="text-xs opacity-75">Ctrl+1</span>
-                          </div>
-                        </Button>
-                        <Button
-                          onClick={() => handleQuickTriageAction("escalate")}
-                          className="h-16 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white shadow-lg shadow-orange-500/20"
-                        >
-                          <div className="flex flex-col items-center gap-1">
-                            <TrendingUp className="h-5 w-5" />
-                            <span className="text-sm font-semibold">Escalate</span>
-                            <span className="text-xs opacity-75">Ctrl+2</span>
-                          </div>
-                        </Button>
-                        <Button
-                          onClick={() => handleQuickTriageAction("resolve")}
-                          className="h-16 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg shadow-green-500/20"
-                        >
-                          <div className="flex flex-col items-center gap-1">
-                            <CheckCircle2 className="h-5 w-5" />
-                            <span className="text-sm font-semibold">Resolve</span>
-                            <span className="text-xs opacity-75">Ctrl+3</span>
-                          </div>
-                        </Button>
-                        <Button
-                          onClick={() => handleQuickTriageAction("assign_me")}
-                          className="h-16 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white shadow-lg shadow-cyan-500/20"
-                        >
-                          <div className="flex flex-col items-center gap-1">
-                            <User className="h-5 w-5" />
-                            <span className="text-sm font-semibold">Assign to Me</span>
-                            <span className="text-xs opacity-75">Ctrl+A</span>
-                          </div>
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Detailed Actions */}
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="bg-[#0f0f0f] rounded-lg border border-cyan-500/30 p-6">
-                        <h3 className="text-sm font-semibold text-white mb-4">Change Severity</h3>
-                        <Select
-                          value={selectedForTriage.urgency}
-                          onValueChange={(v) => handleQuickSeverityChange(selectedForTriage.id, v)}
-                        >
-                          <SelectTrigger className="bg-[#1a1a1a] border-cyan-500/30">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="critical">Critical</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="info">Info</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="bg-[#0f0f0f] rounded-lg border border-cyan-500/30 p-6">
-                        <h3 className="text-sm font-semibold text-white mb-4">Assign Owner</h3>
-                        <Select
-                          value={selectedForTriage.owner}
-                          onValueChange={(v) => handleQuickAssign(selectedForTriage.id, v)}
-                        >
-                          <SelectTrigger className="bg-[#1a1a1a] border-cyan-500/30">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="carl">Carl</SelectItem>
-                            <SelectItem value="vishal">Vishal</SelectItem>
-                            <SelectItem value="terry">Terry</SelectItem>
-                            <SelectItem value="jamie">Jamie</SelectItem>
-                            <SelectItem value="lin">Lin</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* View Full Details */}
-                    <Button
-                      onClick={() => router.push(`/incidents/${selectedForTriage.id}?tab=triage`)}
-                      className="w-full h-12 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white shadow-lg shadow-cyan-500/20"
-                    >
-                      <Shield className="mr-2 h-5 w-5" />
-                      Open Full Triage Workspace
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <Target className="h-16 w-16 text-cyan-400/50 mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold text-white mb-2">No Incident Selected</h3>
-                      <p className="text-gray-400">Select an incident from the queue to begin triage</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Keyboard Shortcuts Overlay */}
-            {showKeyboardShortcuts && (
-              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
-                <div className="bg-[#0f0f0f] rounded-lg border border-cyan-500/30 p-8 max-w-2xl w-full mx-4 shadow-2xl shadow-cyan-500/20">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Keyboard className="h-6 w-6 text-cyan-400" />
-                      Keyboard Shortcuts
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowKeyboardShortcuts(false)}
-                      className="text-gray-400"
-                    >
-                      <X className="h-5 w-5" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg">
-                      <span className="text-gray-300">Mark Critical</span>
-                      <kbd className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-sm font-mono">Ctrl+1</kbd>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg">
-                      <span className="text-gray-300">Escalate</span>
-                      <kbd className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-sm font-mono">Ctrl+2</kbd>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg">
-                      <span className="text-gray-300">Resolve</span>
-                      <kbd className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-sm font-mono">Ctrl+3</kbd>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg">
-                      <span className="text-gray-300">Next Incident</span>
-                      <kbd className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-sm font-mono">Ctrl+N</kbd>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg">
-                      <span className="text-gray-300">Toggle Shortcuts</span>
-                      <kbd className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-sm font-mono">Ctrl+?</kbd>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </main>
-        </div>
-      </div>
-    )
+  const getFullOwnerName = (owner: string) => {
+    const ownerMap: { [key: string]: string } = {
+      Carl: "Carl Johnson",
+      Vishal: "Vishal Patel",
+      Terry: "Terry Chen",
+      Jamie: "Jamie Smith",
+      Lin: "Lin Wang",
+      Unassigned: "Unassigned",
+    }
+    return ownerMap[owner] || owner
   }
 
-  // Standard Incident Review Page
+  const handleReassignClick = (e: React.MouseEvent, incidentId: string, currentOwner: string) => {
+    e.stopPropagation()
+    setReassignDialog({ incidentId, currentOwner })
+  }
+
+  const handleReassign = async (incidentId: string, newOwner: string) => {
+    await handleQuickAssign(incidentId, newOwner)
+    setReassignDialog(null)
+  }
+
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen bg-background text-foreground">
       <SidebarNav />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         <Header />
-        <main className="flex-1 overflow-y-auto bg-[#0a0a0a] p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-white mb-1">Incident Review</h1>
-              <p className="text-sm text-gray-400">Automated incident response and workflows</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={() => setTriageMode(!triageMode)}
-                variant={triageMode ? "default" : "outline"}
-                size="sm"
-                className={cn(
-                  "gap-2 transition-all",
-                  triageMode
-                    ? "bg-cyan-600 hover:bg-cyan-700 shadow-lg shadow-cyan-500/50 animate-pulse"
-                    : "bg-transparent",
-                )}
-              >
-                <Shield className="h-4 w-4" />
-                {triageMode ? "Triage Mode: ACTIVE" : "Enable Triage Mode"}
-              </Button>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search incidents..."
-                  className="pl-10 w-64 bg-[#1a1a1a] border-border/50"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <Button onClick={fetchIncidents} variant="outline" size="sm" className="gap-2 bg-transparent">
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </Button>
-            </div>
-          </div>
-
-          {/* Triage Mode banner */}
-          {triageMode && (
-            <div className="bg-gradient-to-r from-cyan-900/30 to-cyan-800/20 border border-cyan-500/30 rounded-lg p-4 mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                <div>
-                  <h3 className="text-sm font-semibold text-cyan-400">Triage Mode Active</h3>
-                  <p className="text-xs text-gray-400">
-                    Click any incident to open the Triage tab for quick investigation and response
-                  </p>
+        <main className="flex-1 p-6 overflow-y-auto">
+          {/* Dashboard Overview */}
+          <div className="mb-6">
+            <div className="grid grid-cols-5 gap-4">
+              {/* Urgency */}
+              <div className="bg-gradient-to-br from-[#0f0f0f] to-[#1a1a1a] rounded-lg border border-border/30 p-4 hover:border-cyan-500/30 transition-all duration-300">
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  Urgency
+                </h3>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <ResponsiveContainer width={140} height={140}>
+                      <PieChart>
+                        <Pie
+                          data={urgencyData.filter((d) => d.value > 0)}
+                          dataKey="value"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={65}
+                          stroke="#000"
+                          strokeWidth={2}
+                          paddingAngle={2}
+                          animationBegin={0}
+                          animationDuration={800}
+                        >
+                          {urgencyData
+                            .filter((d) => d.value > 0)
+                            .map((entry, index) => (
+                              <Cell key={`urgency-cell-${index}`} fill={entry.color} />
+                            ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <div className="text-2xl font-bold text-white">{urgencyTotal}</div>
+                      <div className="text-xs text-gray-500">Total</div>
+                    </div>
+                  </div>
+                  <div className="w-full space-y-2">
+                    {urgencyData
+                      .filter((d) => d.value > 0)
+                      .map((item) => (
+                        <div key={item.name} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: item.color }} />
+                          <span className="text-xs text-gray-300 flex-1">{item.name}</span>
+                          <span className="text-xs font-semibold text-white bg-white/5 px-2 py-0.5 rounded">
+                            {item.value}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setTriageMode(false)}
-                className="text-cyan-400 hover:text-cyan-300"
-              >
-                Exit Triage Mode
-              </Button>
-            </div>
-          )}
 
-          {/* Donut Charts */}
-          <div className="grid grid-cols-5 gap-4 mb-6">
-            {/* Urgency */}
-            <div className="bg-[#0f0f0f] rounded-lg border border-border/30 p-4">
-              <h3 className="text-sm font-semibold text-white mb-3">Urgency</h3>
-              <div className="flex items-center gap-4">
-                <ResponsiveContainer width={120} height={120}>
-                  <PieChart>
-                    <Pie data={urgencyData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={55}>
-                      {urgencyData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-1">
-                  {urgencyData.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2 text-xs">
-                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
-                      <span className="text-gray-400">{item.name}</span>
+              {/* Type */}
+              <div className="bg-gradient-to-br from-[#0f0f0f] to-[#1a1a1a] rounded-lg border border-border/30 p-4 hover:border-cyan-500/30 transition-all duration-300">
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse" />
+                  Type
+                </h3>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <ResponsiveContainer width={140} height={140}>
+                      <PieChart>
+                        <Pie
+                          data={typeData.filter((d) => d.value > 0)}
+                          dataKey="value"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={65}
+                          stroke="#000"
+                          strokeWidth={2}
+                          paddingAngle={2}
+                          animationBegin={0}
+                          animationDuration={800}
+                        >
+                          {typeData
+                            .filter((d) => d.value > 0)
+                            .map((entry, index) => (
+                              <Cell key={`type-cell-${index}`} fill={entry.color} />
+                            ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <div className="text-2xl font-bold text-white">{typeTotal}</div>
+                      <div className="text-xs text-gray-500">Total</div>
                     </div>
-                  ))}
+                  </div>
+                  <div className="w-full space-y-2">
+                    {typeData
+                      .filter((d) => d.value > 0)
+                      .map((item) => (
+                        <div key={item.name} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: item.color }} />
+                          <span className="text-xs text-gray-300 flex-1">{item.name}</span>
+                          <span className="text-xs font-semibold text-white bg-white/5 px-2 py-0.5 rounded">
+                            {item.value}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Type */}
-            <div className="bg-[#0f0f0f] rounded-lg border border-border/30 p-4">
-              <h3 className="text-sm font-semibold text-white mb-3">Type</h3>
-              <div className="flex items-center gap-4">
-                <ResponsiveContainer width={120} height={120}>
-                  <PieChart>
-                    <Pie data={typeData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={55}>
-                      {typeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-1">
-                  {typeData.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2 text-xs">
-                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
-                      <span className="text-gray-400">{item.name}</span>
+              {/* Status */}
+              <div className="bg-gradient-to-br from-[#0f0f0f] to-[#1a1a1a] rounded-lg border border-border/30 p-4 hover:border-cyan-500/30 transition-all duration-300">
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  Status
+                </h3>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <ResponsiveContainer width={140} height={140}>
+                      <PieChart>
+                        <Pie
+                          data={statusData.filter((d) => d.value > 0)}
+                          dataKey="value"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={65}
+                          stroke="#000"
+                          strokeWidth={2}
+                          paddingAngle={2}
+                          animationBegin={0}
+                          animationDuration={800}
+                        >
+                          {statusData
+                            .filter((d) => d.value > 0)
+                            .map((entry, index) => (
+                              <Cell key={`status-cell-${index}`} fill={entry.color} />
+                            ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <div className="text-2xl font-bold text-white">{statusTotal}</div>
+                      <div className="text-xs text-gray-500">Total</div>
                     </div>
-                  ))}
+                  </div>
+                  <div className="w-full space-y-2">
+                    {statusData
+                      .filter((d) => d.value > 0)
+                      .map((item) => (
+                        <div key={item.name} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: item.color }} />
+                          <span className="text-xs text-gray-300 flex-1">{item.name}</span>
+                          <span className="text-xs font-semibold text-white bg-white/5 px-2 py-0.5 rounded">
+                            {item.value}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Status */}
-            <div className="bg-[#0f0f0f] rounded-lg border border-border/30 p-4">
-              <h3 className="text-sm font-semibold text-white mb-3">Status</h3>
-              <div className="flex items-center gap-4">
-                <ResponsiveContainer width={120} height={120}>
-                  <PieChart>
-                    <Pie data={statusData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={55}>
-                      {statusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-1">
-                  {statusData.slice(0, 6).map((item) => (
-                    <div key={item.name} className="flex items-center gap-2 text-xs">
-                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
-                      <span className="text-gray-400">{item.name}</span>
+              {/* Owner */}
+              <div className="bg-gradient-to-br from-[#0f0f0f] to-[#1a1a1a] rounded-lg border border-border/30 p-4 hover:border-cyan-500/30 transition-all duration-300">
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                  Owner
+                </h3>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <ResponsiveContainer width={140} height={140}>
+                      <PieChart>
+                        <Pie
+                          data={ownerData.filter((d) => d.value > 0)}
+                          dataKey="value"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={65}
+                          stroke="#000"
+                          strokeWidth={2}
+                          paddingAngle={2}
+                          animationBegin={0}
+                          animationDuration={800}
+                        >
+                          {ownerData
+                            .filter((d) => d.value > 0)
+                            .map((entry, index) => (
+                              <Cell key={`owner-cell-${index}`} fill={entry.color} />
+                            ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <div className="text-2xl font-bold text-white">{ownerTotal}</div>
+                      <div className="text-xs text-gray-500">Total</div>
                     </div>
-                  ))}
+                  </div>
+                  <div className="w-full space-y-2">
+                    {ownerData
+                      .filter((d) => d.value > 0)
+                      .map((item) => (
+                        <div key={item.name} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: item.color }} />
+                          <span className="text-xs text-gray-300 flex-1">{item.name}</span>
+                          <span className="text-xs font-semibold text-white bg-white/5 px-2 py-0.5 rounded">
+                            {item.value}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Owner */}
-            <div className="bg-[#0f0f0f] rounded-lg border border-border/30 p-4">
-              <h3 className="text-sm font-semibold text-white mb-3">Owner</h3>
-              <div className="flex items-center gap-4">
-                <ResponsiveContainer width={120} height={120}>
-                  <PieChart>
-                    <Pie data={ownerData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={55}>
-                      {ownerData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-1">
-                  {ownerData.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2 text-xs">
-                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
-                      <span className="text-gray-400">{item.name}</span>
+              {/* Security Domain */}
+              <div className="bg-gradient-to-br from-[#0f0f0f] to-[#1a1a1a] rounded-lg border border-border/30 p-4 hover:border-cyan-500/30 transition-all duration-300">
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  Security Domain
+                </h3>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <ResponsiveContainer width={140} height={140}>
+                      <PieChart>
+                        <Pie
+                          data={domainData.filter((d) => d.value > 0)}
+                          dataKey="value"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={65}
+                          stroke="#000"
+                          strokeWidth={2}
+                          paddingAngle={2}
+                          animationBegin={0}
+                          animationDuration={800}
+                        >
+                          {domainData
+                            .filter((d) => d.value > 0)
+                            .map((entry, index) => (
+                              <Cell key={`domain-cell-${index}`} fill={entry.color} />
+                            ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <div className="text-2xl font-bold text-white">{domainTotal}</div>
+                      <div className="text-xs text-gray-500">Total</div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Security Domain */}
-            <div className="bg-[#0f0f0f] rounded-lg border border-border/30 p-4">
-              <h3 className="text-sm font-semibold text-white mb-3">Security Domain</h3>
-              <div className="flex items-center gap-4">
-                <ResponsiveContainer width={120} height={120}>
-                  <PieChart>
-                    <Pie data={domainData} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={55}>
-                      {domainData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                  </div>
+                  <div className="w-full space-y-2">
+                    {domainData
+                      .filter((d) => d.value > 0)
+                      .map((item) => (
+                        <div key={item.name} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: item.color }} />
+                          <span className="text-xs text-gray-300 flex-1">{item.name}</span>
+                          <span className="text-xs font-semibold text-white bg-white/5 px-2 py-0.5 rounded">
+                            {item.value}
+                          </span>
+                        </div>
                       ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-1">
-                  {domainData.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2 text-xs">
-                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
-                      <span className="text-gray-400">{item.name}</span>
-                    </div>
-                  ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1420,10 +930,10 @@ export default function IncidentsPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full table-fixed">
                 <thead className="border-b border-border/30 bg-[#1a1a1a]">
                   <tr className="text-left">
-                    <th className="p-3 text-xs font-medium text-gray-400">
+                    <th className="w-12 p-3 text-xs font-medium text-gray-400">
                       <input
                         type="checkbox"
                         className="rounded border-gray-600"
@@ -1431,52 +941,42 @@ export default function IncidentsPage() {
                         onChange={(e) => handleSelectAll(e.target.checked)}
                       />
                     </th>
-                    <th className="p-3 text-xs font-medium text-gray-400">Age / SLA</th>
+                    <th className="w-24 p-3 text-xs font-medium text-gray-400">Age / SLA</th>
                     <th
-                      className="p-3 text-xs font-medium text-gray-400 cursor-pointer hover:text-white"
+                      className="w-40 p-3 text-xs font-medium text-gray-400 cursor-pointer hover:text-white"
                       onClick={() => handleSort("riskObjectName")}
                     >
-                      Risk Object Name <ChevronDown className="inline h-3 w-3" />
+                      Risk Object <ChevronDown className="inline h-3 w-3" />
                     </th>
                     <th
-                      className="p-3 text-xs font-medium text-gray-400 cursor-pointer hover:text-white"
+                      className="w-64 p-3 text-xs font-medium text-gray-400 cursor-pointer hover:text-white"
                       onClick={() => handleSort("title")}
                     >
                       Title <ChevronDown className="inline h-3 w-3" />
                     </th>
                     <th
-                      className="p-3 text-xs font-medium text-gray-400 cursor-pointer hover:text-white"
+                      className="w-24 p-3 text-xs font-medium text-gray-400 cursor-pointer hover:text-white text-center"
                       onClick={() => handleSort("aggregatedRiskScore")}
                     >
                       Risk Score <ChevronDown className="inline h-3 w-3" />
                     </th>
-                    <th className="p-3 text-xs font-medium text-gray-400">Risk Events</th>
-                    <th className="p-3 text-xs font-medium text-gray-400">Type</th>
+                    <th className="w-24 p-3 text-xs font-medium text-gray-400 text-center">Risk Events</th>
+                    <th className="w-32 p-3 text-xs font-medium text-gray-400">Time</th>
+                    <th className="w-28 p-3 text-xs font-medium text-gray-400">Domain</th>
                     <th
-                      className="p-3 text-xs font-medium text-gray-400 cursor-pointer hover:text-white"
-                      onClick={() => handleSort("time")}
-                    >
-                      Time <ChevronDown className="inline h-3 w-3" />
-                    </th>
-                    <th className="p-3 text-xs font-medium text-gray-400">Domain</th>
-                    <th
-                      className="p-3 text-xs font-medium text-gray-400 cursor-pointer hover:text-white"
+                      className="w-28 p-3 text-xs font-medium text-gray-400 cursor-pointer hover:text-white"
                       onClick={() => handleSort("urgency")}
                     >
                       Urgency <ChevronDown className="inline h-3 w-3" />
                     </th>
-                    <th className="p-3 text-xs font-medium text-gray-400">Status</th>
-                    <th className="p-3 text-xs font-medium text-gray-400">Owner</th>
-                    <th className="p-3 text-xs font-medium text-gray-400">
-                      {triageMode ? "Triage Actions" : "Action"}
-                    </th>
+                    <th className="w-40 p-3 text-xs font-medium text-gray-400">Owner</th>
+                    <th className="w-32 p-3 text-xs font-medium text-gray-400">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {paginatedIncidents.map((incident, idx) => {
                     const sla = getSLAStatus(incident.time, incident.urgency)
                     const age = getIncidentAge(incident.time)
-                    const isHovered = hoveredRow === incident.id
 
                     return (
                       <>
@@ -1485,20 +985,12 @@ export default function IncidentsPage() {
                           className={cn(
                             "hover:bg-[#1a1a1a] transition-all cursor-pointer group",
                             expandedRow === incident.id && "bg-[#1a1a1a]",
-                            triageMode &&
-                              "hover:border-l-4 hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-500/20",
                           )}
                           onClick={() => {
-                            if (triageMode) {
-                              window.location.href = `/incidents/${incident.id}?tab=triage`
-                            } else {
-                              window.location.href = `/incidents/${incident.id}`
-                            }
+                            window.location.href = `/incidents/${incident.id}`
                           }}
-                          onMouseEnter={() => setHoveredRow(incident.id)}
-                          onMouseLeave={() => setHoveredRow(null)}
                         >
-                          <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                          <td className="w-12 p-3" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               className="rounded border-gray-600"
@@ -1506,27 +998,29 @@ export default function IncidentsPage() {
                               onChange={(e) => handleSelectIncident(incident.id, e.target.checked)}
                             />
                           </td>
-                          <td className="p-3">
+                          <td className="w-24 p-3">
                             <div className="flex flex-col gap-1">
                               <span className="text-xs text-gray-400">{age}</span>
                               <span className={cn("text-xs font-medium", sla.color)}>{sla.text}</span>
                             </div>
                           </td>
-                          <td className="p-3">
+                          <td className="w-40 p-3">
                             <div className="flex items-center gap-2">
                               <ChevronRight
                                 className={cn(
-                                  "h-4 w-4 text-gray-400 transition-transform",
+                                  "h-4 w-4 text-gray-400 transition-transform flex-shrink-0",
                                   expandedRow === incident.id && "rotate-90",
                                 )}
                               />
-                              <span className="text-sm text-gray-300">{incident.riskObjectName}</span>
+                              <span className="text-sm text-gray-300 truncate">{incident.riskObjectName}</span>
                             </div>
                           </td>
-                          <td className="p-3 text-sm text-gray-300 max-w-xs">{incident.title}</td>
-                          <td className="p-3">
+                          <td className="w-64 p-3">
+                            <span className="text-sm text-gray-300 line-clamp-2">{incident.title}</span>
+                          </td>
+                          <td className="w-24 p-3 text-center">
                             {incident.aggregatedRiskScore ? (
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center justify-center gap-2">
                                 <div
                                   className={cn(
                                     "w-2 h-2 rounded-full animate-pulse",
@@ -1543,7 +1037,7 @@ export default function IncidentsPage() {
                               <span className="text-sm text-gray-500">--</span>
                             )}
                           </td>
-                          <td className="p-3">
+                          <td className="w-24 p-3 text-center">
                             {incident.riskEvents ? (
                               <Button variant="link" className="text-cyan-400 p-0 h-auto text-sm">
                                 {incident.riskEvents}
@@ -1552,134 +1046,55 @@ export default function IncidentsPage() {
                               <span className="text-sm text-gray-500">--</span>
                             )}
                           </td>
-                          <td className="p-3 text-sm text-gray-300">
-                            {new Date(incident.time).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                          <td className="w-32 p-3">
+                            <span className="text-sm text-gray-300">
+                              {new Date(incident.time).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
                           </td>
-                          <td className="p-3">
+                          <td className="w-28 p-3">
                             <Badge variant="outline" className="text-xs capitalize">
                               {incident.securityDomain}
                             </Badge>
                           </td>
-                          <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                            {triageMode ? (
-                              <Select
-                                value={incident.urgency}
-                                onValueChange={(v) => handleQuickSeverityChange(incident.id, v)}
+                          <td className="w-28 p-3">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle
+                                className={cn("h-4 w-4 flex-shrink-0", getSeverityColor(incident.urgency))}
+                              />
+                              <span
+                                className={cn("text-sm font-medium capitalize", getSeverityColor(incident.urgency))}
                               >
-                                <SelectTrigger className="w-28 h-7 text-xs bg-[#1a1a1a] border-border/50">
-                                  <AlertTriangle className={cn("h-3 w-3 mr-1", getSeverityColor(incident.urgency))} />
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="critical">Critical</SelectItem>
-                                  <SelectItem value="high">High</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="low">Low</SelectItem>
-                                  <SelectItem value="info">Info</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <AlertTriangle className={cn("h-4 w-4", getSeverityColor(incident.urgency))} />
-                                <span
-                                  className={cn("text-sm font-medium capitalize", getSeverityColor(incident.urgency))}
-                                >
-                                  {incident.urgency}
-                                </span>
-                              </div>
-                            )}
+                                {incident.urgency}
+                              </span>
+                            </div>
                           </td>
-                          <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                            {triageMode ? (
-                              <Select
-                                value={incident.status}
-                                onValueChange={(v) => handleQuickStatusChange(incident.id, v)}
-                              >
-                                <SelectTrigger className="w-32 h-7 text-xs bg-[#1a1a1a] border-border/50">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="new">New</SelectItem>
-                                  <SelectItem value="in_progress">In Progress</SelectItem>
-                                  <SelectItem value="pending">Pending</SelectItem>
-                                  <SelectItem value="resolved">Resolved</SelectItem>
-                                  <SelectItem value="closed">Closed</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Badge variant="outline" className="text-xs border-gray-700 text-gray-300 capitalize">
-                                {incident.status.replace("_", " ")}
-                              </Badge>
-                            )}
+                          <td className="w-40 p-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-2">
+                              <User className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                              <span className="text-sm text-gray-300 truncate">
+                                {getFullOwnerName(incident.owner) || "Unassigned"}
+                              </span>
+                            </div>
                           </td>
-                          <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                            {triageMode ? (
-                              <Select value={incident.owner} onValueChange={(v) => handleQuickAssign(incident.id, v)}>
-                                <SelectTrigger className="w-28 h-7 text-xs bg-[#1a1a1a] border-border/50">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="carl">Carl</SelectItem>
-                                  <SelectItem value="vishal">Vishal</SelectItem>
-                                  <SelectItem value="terry">Terry</SelectItem>
-                                  <SelectItem value="jamie">Jamie</SelectItem>
-                                  <SelectItem value="lin">Lin</SelectItem>
-                                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <span className="text-sm text-gray-300">{incident.owner}</span>
-                            )}
-                          </td>
-                          <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                          <td className="w-32 p-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
-                              {triageMode ? (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={() => setQuickNoteId(incident.id)}
-                                  >
-                                    Add Note
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={() => handleQuickAction(incident.id, "escalate")}
-                                  >
-                                    Escalate
-                                  </Button>
-                                </>
-                              ) : (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2 text-xs"
-                                    onClick={() => handleQuickAction(incident.id, "assign")}
-                                  >
-                                    Assign
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 px-2 text-xs"
-                                    onClick={() => setDetailsPanel(incident)}
-                                  >
-                                    Details
-                                  </Button>
-                                </>
-                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => setDetailsPanel(incident)}
+                              >
+                                Details
+                              </Button>
                             </div>
                           </td>
                         </tr>
+
                         {quickNoteId === incident.id && (
                           <tr className="bg-[#151515]">
                             <td colSpan={12} className="p-4">
@@ -1777,12 +1192,22 @@ export default function IncidentsPage() {
         <div className="fixed inset-y-0 right-0 w-96 bg-[#0f0f0f] border-l border-border/30 shadow-2xl z-50 overflow-y-auto">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-white">Incident Details</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold text-white">Incident Details</h3>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="text-xs text-cyan-400 font-medium">LIVE</span>
+                </div>
+              </div>
               <Button variant="ghost" size="sm" onClick={() => setDetailsPanel(null)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
             <div className="space-y-4">
+              <div>
+                <label className="text-xs text-gray-400">Incident ID</label>
+                <p className="text-sm text-white font-mono font-medium">{detailsPanel.id}</p>
+              </div>
               <div>
                 <label className="text-xs text-gray-400">Risk Object</label>
                 <p className="text-sm text-white font-medium">{detailsPanel.riskObjectName}</p>
@@ -1791,19 +1216,223 @@ export default function IncidentsPage() {
                 <label className="text-xs text-gray-400">Title</label>
                 <p className="text-sm text-white">{detailsPanel.title}</p>
               </div>
+
+              <div>
+                <label className="text-xs text-gray-400">Type</label>
+                <div className="mt-1">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs",
+                      detailsPanel.type === "risk_notable"
+                        ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+                        : "bg-purple-500/20 text-purple-400 border-purple-500/30",
+                    )}
+                  >
+                    {detailsPanel.type === "risk_notable" ? "Risk Based Alert" : "Notable"}
+                  </Badge>
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs text-gray-400">Urgency</label>
-                <Badge className={cn("mt-1", getSeverityColor(detailsPanel.urgency))}>{detailsPanel.urgency}</Badge>
+                <div className="mt-1 flex items-center gap-2">
+                  <AlertTriangle className={cn("h-4 w-4", getSeverityColor(detailsPanel.urgency))} />
+                  <Badge className={cn("capitalize", getSeverityColor(detailsPanel.urgency))}>
+                    {detailsPanel.urgency}
+                  </Badge>
+                </div>
               </div>
+
               <div>
                 <label className="text-xs text-gray-400">Status</label>
-                <p className="text-sm text-white capitalize">{detailsPanel.status.replace("_", " ")}</p>
+                <div className="mt-1">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs flex items-center gap-1 w-fit",
+                      getStatusBadge(detailsPanel.status).className,
+                    )}
+                  >
+                    {getStatusBadge(detailsPanel.status).icon}
+                    {getStatusBadge(detailsPanel.status).label}
+                  </Badge>
+                </div>
               </div>
+
+              <div>
+                <label className="text-xs text-gray-400">Owner</label>
+                <div className="mt-1 flex items-center gap-2">
+                  <User className="h-4 w-4 text-cyan-400" />
+                  <p className="text-sm text-white font-medium">
+                    {detailsPanel.owner || <span className="text-gray-500">Unassigned</span>}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-400">Security Domain</label>
+                <div className="mt-1">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs capitalize",
+                      detailsPanel.securityDomain === "endpoint" &&
+                        "bg-purple-500/20 text-purple-400 border-purple-500/30",
+                      detailsPanel.securityDomain === "network" && "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+                      detailsPanel.securityDomain === "access" && "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                      detailsPanel.securityDomain === "threat" && "bg-red-500/20 text-red-400 border-red-500/30",
+                      detailsPanel.securityDomain === "identity" &&
+                        "bg-green-500/20 text-green-400 border-green-500/30",
+                      detailsPanel.securityDomain === "audit" &&
+                        "bg-orange-500/20 text-orange-400 border-orange-500/30",
+                    )}
+                  >
+                    <Shield className="h-3 w-3 mr-1 inline" />
+                    {detailsPanel.securityDomain}
+                  </Badge>
+                </div>
+              </div>
+
               <div className="pt-4 border-t border-border/30">
-                <Button className="w-full bg-cyan-600 hover:bg-cyan-700">Take Action</Button>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-400">Risk Score</label>
+                    <div className="mt-1 flex items-center gap-2">
+                      {detailsPanel.aggregatedRiskScore ? (
+                        <>
+                          <div
+                            className={cn(
+                              "w-2 h-2 rounded-full animate-pulse",
+                              detailsPanel.aggregatedRiskScore > 200
+                                ? "bg-red-500"
+                                : detailsPanel.aggregatedRiskScore > 150
+                                  ? "bg-orange-500"
+                                  : "bg-yellow-500",
+                            )}
+                          />
+                          <span className="text-lg font-bold text-white">{detailsPanel.aggregatedRiskScore}</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-500">N/A</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">Risk Events</label>
+                    <div className="mt-1">
+                      {detailsPanel.riskEvents ? (
+                        <span className="text-lg font-bold text-cyan-400">{detailsPanel.riskEvents}</span>
+                      ) : (
+                        <span className="text-sm text-gray-500">N/A</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border/30 space-y-2">
+                <Button
+                  className="w-full bg-cyan-600 hover:bg-cyan-700"
+                  onClick={() => router.push(`/incidents/${detailsPanel.id}`)}
+                >
+                  <Shield className="mr-2 h-4 w-4" />
+                  View Full Details
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full bg-transparent"
+                  onClick={() => router.push(`/incidents/${detailsPanel.id}/analyst-mode`)}
+                >
+                  <Brain className="mr-2 h-4 w-4" />
+                  Open Analyst Mode
+                </Button>
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {reassignDialog && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-[90]" onClick={() => setReassignDialog(null)} />
+          <div
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#1a1a1a] border border-border/50 rounded-lg shadow-2xl z-[100] p-4 min-w-[320px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-white mb-1">Reassign Incident</h3>
+              <p className="text-xs text-gray-400">Current owner: {getFullOwnerName(reassignDialog.currentOwner)}</p>
+            </div>
+            <div className="space-y-2">
+              {[
+                { key: "Carl", name: "Carl Johnson" },
+                { key: "Vishal", name: "Vishal Patel" },
+                { key: "Terry", name: "Terry Chen" },
+                { key: "Jamie", name: "Jamie Smith" },
+                { key: "Lin", name: "Lin Wang" },
+                { key: "Unassigned", name: "Unassigned" },
+              ].map((owner) => (
+                <button
+                  key={owner.key}
+                  className={cn(
+                    "w-full px-3 py-2 text-left text-sm rounded hover:bg-white/5 transition-colors flex items-center gap-2",
+                    reassignDialog.currentOwner === owner.key &&
+                      "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30",
+                  )}
+                  onClick={() => handleReassign(reassignDialog.incidentId, owner.key)}
+                >
+                  <User className="h-4 w-4" />
+                  <span>{owner.name}</span>
+                  {reassignDialog.currentOwner === owner.key && (
+                    <CheckCircle2 className="h-4 w-4 ml-auto text-cyan-400" />
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-border/30">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full bg-transparent"
+                onClick={() => setReassignDialog(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {contextMenu && (
+        <div
+          className="fixed bg-[#1a1a1a] border border-border/50 rounded-lg shadow-2xl z-[100] py-1 min-w-[160px]"
+          style={{
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-2 border-b border-border/30">
+            <p className="text-xs text-gray-400">Reassign to:</p>
+          </div>
+          {["Carl", "Vishal", "Terry", "Jamie", "Lin", "Unassigned"].map((owner) => (
+            <button
+              key={owner}
+              className={cn(
+                "w-full px-3 py-2 text-left text-sm hover:bg-white/5 transition-colors flex items-center gap-2",
+                contextMenu.currentOwner === owner && "bg-cyan-500/10 text-cyan-400",
+              )}
+              onClick={() => {
+                handleQuickAssign(contextMenu.incidentId, owner)
+                handleCloseContextMenu()
+              }}
+            >
+              <User className="h-3 w-3" />
+              <span>{owner}</span>
+              {contextMenu.currentOwner === owner && <CheckCircle2 className="h-3 w-3 ml-auto text-cyan-400" />}
+            </button>
+          ))}
         </div>
       )}
     </div>

@@ -8,17 +8,159 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PlaybookCard } from "@/components/playbook-card"
 import { ExecutionTimeline } from "@/components/execution-timeline"
-import { Plus, RefreshCw, Search, TrendingUp, Clock, CheckCircle2, Zap, BarChart3 } from "lucide-react"
+import {
+  Plus,
+  RefreshCw,
+  Search,
+  TrendingUp,
+  Clock,
+  CheckCircle2,
+  Zap,
+  BarChart3,
+  Mail,
+  Bug,
+  Lock,
+  Shield,
+  Database,
+  UserX,
+  Key,
+  AlertTriangle,
+} from "lucide-react"
 import { useState, useEffect } from "react"
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { ChartContainer } from "@/components/ui/chart"
+import { useRouter } from "next/navigation"
 
 export default function PlaybooksPage() {
+  const router = useRouter()
   const [playbooks, setPlaybooks] = useState<any[]>([])
   const [executions, setExecutions] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const playbookTemplates = [
+    {
+      id: "template-1",
+      name: "Phishing Email Response",
+      description:
+        "Automated workflow to investigate, contain, and remediate phishing attacks. Includes email analysis, user notification, and threat intelligence enrichment.",
+      category: "Email Security",
+      trigger: "Phishing email reported",
+      steps: 7,
+      estimatedTime: "5-10 minutes",
+      automationLevel: "Full",
+      tags: ["Phishing", "Email", "SOAR"],
+      icon: "Mail",
+      color: "from-red-500/20 to-orange-500/20",
+      borderColor: "border-red-500/50",
+    },
+    {
+      id: "template-2",
+      name: "Malware Containment",
+      description:
+        "Isolate infected endpoints, block malicious IPs, and initiate forensic analysis. Includes EDR integration and automated quarantine.",
+      category: "Endpoint Security",
+      trigger: "Malware detected on endpoint",
+      steps: 9,
+      estimatedTime: "3-7 minutes",
+      automationLevel: "Full",
+      tags: ["Malware", "EDR", "Containment"],
+      icon: "Bug",
+      color: "from-purple-500/20 to-pink-500/20",
+      borderColor: "border-purple-500/50",
+    },
+    {
+      id: "template-3",
+      name: "Ransomware Response",
+      description:
+        "Rapid response to ransomware incidents with network isolation, backup verification, and stakeholder notification.",
+      category: "Incident Response",
+      trigger: "Ransomware activity detected",
+      steps: 12,
+      estimatedTime: "10-15 minutes",
+      automationLevel: "Semi-Automated",
+      tags: ["Ransomware", "Critical", "IR"],
+      icon: "Lock",
+      color: "from-red-500/20 to-red-600/20",
+      borderColor: "border-red-600/50",
+    },
+    {
+      id: "template-4",
+      name: "DDoS Mitigation",
+      description:
+        "Detect and mitigate distributed denial of service attacks with traffic analysis, rate limiting, and CDN activation.",
+      category: "Network Security",
+      trigger: "Abnormal traffic spike detected",
+      steps: 6,
+      estimatedTime: "2-5 minutes",
+      automationLevel: "Full",
+      tags: ["DDoS", "Network", "Availability"],
+      icon: "Shield",
+      color: "from-cyan-500/20 to-blue-500/20",
+      borderColor: "border-cyan-500/50",
+    },
+    {
+      id: "template-5",
+      name: "Data Breach Response",
+      description:
+        "Comprehensive data breach investigation and response including data classification, impact assessment, and regulatory notification.",
+      category: "Data Protection",
+      trigger: "Unauthorized data access detected",
+      steps: 15,
+      estimatedTime: "20-30 minutes",
+      automationLevel: "Semi-Automated",
+      tags: ["Data Breach", "Compliance", "Privacy"],
+      icon: "Database",
+      color: "from-orange-500/20 to-yellow-500/20",
+      borderColor: "border-orange-500/50",
+    },
+    {
+      id: "template-6",
+      name: "Insider Threat Investigation",
+      description:
+        "Monitor and investigate suspicious insider activity with user behavior analytics, access review, and evidence collection.",
+      category: "User Security",
+      trigger: "Anomalous user behavior detected",
+      steps: 10,
+      estimatedTime: "15-25 minutes",
+      automationLevel: "Semi-Automated",
+      tags: ["Insider Threat", "UEBA", "Investigation"],
+      icon: "UserX",
+      color: "from-yellow-500/20 to-orange-500/20",
+      borderColor: "border-yellow-500/50",
+    },
+    {
+      id: "template-7",
+      name: "Brute Force Attack Response",
+      description:
+        "Detect and block brute force login attempts with account lockout, IP blocking, and security team notification.",
+      category: "Access Control",
+      trigger: "Multiple failed login attempts",
+      steps: 5,
+      estimatedTime: "1-3 minutes",
+      automationLevel: "Full",
+      tags: ["Brute Force", "Authentication", "IAM"],
+      icon: "Key",
+      color: "from-green-500/20 to-emerald-500/20",
+      borderColor: "border-green-500/50",
+    },
+    {
+      id: "template-8",
+      name: "Vulnerability Remediation",
+      description:
+        "Automated vulnerability patching workflow with asset prioritization, patch deployment, and verification testing.",
+      category: "Vulnerability Management",
+      trigger: "Critical vulnerability identified",
+      steps: 8,
+      estimatedTime: "30-60 minutes",
+      automationLevel: "Semi-Automated",
+      tags: ["Vulnerability", "Patching", "Remediation"],
+      icon: "AlertTriangle",
+      color: "from-pink-500/20 to-purple-500/20",
+      borderColor: "border-pink-500/50",
+    },
+  ]
 
   const fetchData = async () => {
     try {
@@ -58,6 +200,14 @@ export default function PlaybooksPage() {
       pb.category.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
+  const filteredTemplates = playbookTemplates.filter(
+    (template) =>
+      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())),
+  )
+
   return (
     <div className="flex h-screen">
       <SidebarNav />
@@ -80,7 +230,11 @@ export default function PlaybooksPage() {
                 <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
-              <Button size="sm" className="bg-cyan-500 text-black hover:bg-cyan-400">
+              <Button
+                size="sm"
+                className="bg-cyan-500 text-black hover:bg-cyan-400"
+                onClick={() => router.push("/playbooks/new")}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 New Playbook
               </Button>
@@ -263,16 +417,75 @@ export default function PlaybooksPage() {
             </TabsContent>
 
             <TabsContent value="templates">
-              <Card className="border-border/50 bg-card/50">
-                <CardContent className="p-12 text-center">
-                  <BarChart3 className="mx-auto mb-4 h-12 w-12 text-gray-600" />
-                  <h3 className="mb-2 text-lg font-semibold text-white">Playbook Templates</h3>
-                  <p className="mb-4 text-sm text-gray-400">
-                    Browse and deploy pre-built playbook templates for common security scenarios
-                  </p>
-                  <Button className="bg-cyan-500 text-black hover:bg-cyan-400">Browse Templates</Button>
-                </CardContent>
-              </Card>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredTemplates.map((template) => (
+                  <Card
+                    key={template.id}
+                    className={`border-2 ${template.borderColor} bg-gradient-to-br ${template.color} hover:shadow-lg transition-all cursor-pointer`}
+                    onClick={() => router.push(`/playbooks/new?template=${template.id}`)}
+                  >
+                    <CardContent className="p-6">
+                      <div className="mb-4 flex items-start justify-between">
+                        <div
+                          className={`flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br ${template.color}`}
+                        >
+                          {template.icon === "Mail" && <Mail className="h-6 w-6 text-red-400" />}
+                          {template.icon === "Bug" && <Bug className="h-6 w-6 text-purple-400" />}
+                          {template.icon === "Lock" && <Lock className="h-6 w-6 text-red-400" />}
+                          {template.icon === "Shield" && <Shield className="h-6 w-6 text-cyan-400" />}
+                          {template.icon === "Database" && <Database className="h-6 w-6 text-orange-400" />}
+                          {template.icon === "UserX" && <UserX className="h-6 w-6 text-yellow-400" />}
+                          {template.icon === "Key" && <Key className="h-6 w-6 text-green-400" />}
+                          {template.icon === "AlertTriangle" && <AlertTriangle className="h-6 w-6 text-pink-400" />}
+                        </div>
+                        <span className="rounded-full bg-cyan-500/20 px-2 py-1 text-xs font-semibold text-cyan-400">
+                          {template.automationLevel}
+                        </span>
+                      </div>
+
+                      <h3 className="mb-2 text-lg font-bold text-white">{template.name}</h3>
+                      <p className="mb-4 text-sm text-gray-400 line-clamp-2">{template.description}</p>
+
+                      <div className="mb-4 space-y-2 text-xs text-gray-500">
+                        <div className="flex items-center justify-between">
+                          <span>Category:</span>
+                          <span className="font-semibold text-gray-300">{template.category}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Steps:</span>
+                          <span className="font-semibold text-gray-300">{template.steps}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Est. Time:</span>
+                          <span className="font-semibold text-gray-300">{template.estimatedTime}</span>
+                        </div>
+                      </div>
+
+                      <div className="mb-4 flex flex-wrap gap-1">
+                        {template.tags.map((tag) => (
+                          <span key={tag} className="rounded bg-gray-800 px-2 py-1 text-xs text-gray-400">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      <Button className="w-full bg-cyan-500 text-black hover:bg-cyan-400">Use Template</Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {filteredTemplates.length === 0 && (
+                <Card className="border-border/50 bg-card/50">
+                  <CardContent className="p-12 text-center">
+                    <BarChart3 className="mx-auto mb-4 h-12 w-12 text-gray-600" />
+                    <h3 className="mb-2 text-lg font-semibold text-white">No Templates Found</h3>
+                    <p className="text-sm text-gray-400">
+                      Try adjusting your search query to find relevant playbook templates
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </main>
